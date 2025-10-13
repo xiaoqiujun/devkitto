@@ -12,6 +12,12 @@ export type Route = {
 }
 export const routes:Route[] = [
   {
+    label: "JSON编辑器",
+    path: "/json-editor",
+    icon: FileJson,
+    element: JSONEditor,
+  },
+  {
     label: "Base64 转换",
     path: "/base64-converter",
     icon: Ampersand,

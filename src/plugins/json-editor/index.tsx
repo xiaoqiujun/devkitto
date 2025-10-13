@@ -5,6 +5,7 @@ import { useState } from "react"
 // import transform from "./transform"
 import jsonData from "../../monaco.json"
 import { useJsonLineMap } from "@/hooks/use-json-line-map"
+import TreeCard from "@/components/tree-card"
 
 
 export const JSONEditor = () => {
@@ -26,8 +27,7 @@ export const JSONEditor = () => {
         />
       }
       rightPanel={
-        <FlowViewer json={tree} />
-        // <div></div>
+        <TreeCard tree={tree} />
       }
     />
   )
