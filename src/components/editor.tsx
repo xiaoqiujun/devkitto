@@ -7,12 +7,14 @@ export interface EditorProps {
 
 const Editor = ({ leftPanel, rightPanel }: EditorProps) => {
 	return (
-		<ResizablePanelGroup direction="horizontal" className="min-w-full w-full h-full min-h-screen rounded-lg border">
+		<ResizablePanelGroup direction="horizontal" className="min-w-full w-full rounded-lg border">
 			<ResizablePanel defaultSize={20} minSize={1}>
 				{leftPanel}
 			</ResizablePanel>
 			<ResizableHandle withHandle />
-			<ResizablePanel defaultSize={50}>{rightPanel}</ResizablePanel>
+			<ResizablePanel defaultSize={50}>
+				<div className="w-full max-h-screen overflow-auto">{rightPanel}</div>
+			</ResizablePanel>
 		</ResizablePanelGroup>
 	)
 }

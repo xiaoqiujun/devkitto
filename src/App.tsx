@@ -18,9 +18,11 @@ function App() {
 	return (
 		<SidebarProvider>
 			<Sidebar routes={routes} />
-			<main className="bg-gray-50 relative flex w-full h-full min-h-screen overflow-auto flex-1 flex-col">
-				<SidebarTrigger />
-				<div className="w-auto h-full m-1.5">
+			<main className="bg-gray-50 relative flex w-full h-[calc(100vh-100px)] overflow-hidden flex-1 flex-col">
+				<div className="h-8 flex items-center">
+					<SidebarTrigger />
+				</div>
+				<div className="w-auto h-full">
 					<Routes>
 						{[
 							...routes,

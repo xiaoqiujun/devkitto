@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState,forwardRef, useImperativeHandle, useCallback } from "react"
 import * as monaco from "monaco-editor"
 import {
 	ContextMenu,
@@ -19,6 +19,9 @@ interface MonacoEditorProps {
 	onChange?: (value: string) => void
 	onLinesContentChange?: (linesContent: string[]) => void
 }
+export interface MonacoEditorHandle {
+	positionAt: (lineNumber: number, column: number) => void
+}
 
 /**
  * 🎯 通用结构化文本编辑器（Monaco 封装）
@@ -30,14 +33,14 @@ interface MonacoEditorProps {
  * - CSV 自动预览表格。
  * - YAML 基础结构校验（不依赖 monaco-yaml）。
  */
-const MonacoEditor: React.FC<MonacoEditorProps> = ({
+const MonacoEditor = forwardRef<MonacoEditorHandle,MonacoEditorProps>(({
 	value,
 	language = "json", // ✅ 默认语言为 JSON
 	readOnly = false,
 	theme = "vs-light",
 	onChange,
 	onLinesContentChange,
-}) => {
+}, refs) => {
 	const editorRef = useRef<HTMLDivElement | null>(null)
 	const monacoInstance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 	const [contextPos, setContextPos] = useState<{ x: number; y: number } | null>(null)
@@ -223,6 +226,29 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({
 		return formatted.trim()
 	}
 
+	const positionAt = useCallback((lineNumber: number, column: number) => {
+		const editor = monacoInstance.current
+		if (!editor) return
+		const model = editor.getModel()
+		if (!model) return
+		const lineLength = model.getLineLength(lineNumber);
+		const position = new monaco.Position(lineNumber, column)
+		const range = new monaco.Range(
+        lineNumber,    // 起始行
+        1,             // 起始列
+        lineNumber,    // 结束行
+        lineLength + 1 // 结束列（+1 确保选中整行，包括换行符）
+    );
+		editor.revealPosition(position)
+		editor.setPosition(position);
+		editor.setSelection(range); 
+		editor.focus();
+	}, [])
+
+	useImperativeHandle(refs, () => ({
+    positionAt,
+  }))
+
 	return (
 		<div className="w-full h-full flex flex-col">
 			{/* 编辑器区域 */}
@@ -284,6 +310,6 @@ const MonacoEditor: React.FC<MonacoEditorProps> = ({
 			)}
 		</div>
 	)
-}
+})
 
 export default MonacoEditor
