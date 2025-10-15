@@ -2,17 +2,51 @@ import { useMemo } from "react";
 import {hasOwn} from "funtool"
 
 interface JsonNode {
+  /**
+   * 节点唯一标识
+   */
   id: string;
-  key: string;
+  /**
+   * 键名
+   */
+  name: string;
+  /**
+   * 值
+   */
   value?: string;
+  /**
+   * 值类型
+   */
   valueType?: string;
+  /**
+   * 开始行号（1-based）
+   */
   startLine: number;
+  /**
+   * 结束行号（1-based）
+   */
   endLine?: number;
+  /**
+   * 层级深度（根为0）
+   */
   level: number;
+  /**
+   * 父节点ID
+   */
   parent?: string;
+  /**
+   * 是否有依赖（是否有子节点）
+   */
+  dependencies?: boolean;
+  /**
+   * 是否展开
+   */
   expanded?: boolean;
 }
 export interface JsonTree extends JsonNode {
+  /**
+   * 子节点
+   */
   children?: JsonTree[];
 }
 
@@ -54,12 +88,13 @@ export function useJsonLineMap(lines: string[]) {
       const val = valueType === "object" || valueType === "array" ? undefined : value
       const node: JsonNode = {
         id: `n-${idCounter++}`,
-        key,
+        name:key,
         value: val,
         valueType,
         startLine: index + 1,
         level: stack.length,
-        expanded: val === undefined ? true: false,
+        dependencies:val === undefined ? true: false,
+        expanded: false,
       };
 
       pushNode(node);
@@ -78,13 +113,14 @@ export function useJsonLineMap(lines: string[]) {
     nodes.forEach((n) => {
       const node: JsonTree = {
         id: n.id,
-        key: n.key,
+        name: n.name,
         value: n.value,
         valueType: n.valueType,
         startLine: n.startLine,
         level: n.level,
         children: [],
         expanded: n.expanded,
+        dependencies: n.dependencies,
       };
       if(hasOwn(n, 'endLine')) node.endLine = n.endLine;
       map.set(n.id, node);

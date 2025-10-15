@@ -24,18 +24,20 @@ export const JSONEditor = () => {
   }
   return (
     <Editor
-      leftPanel={
-        <MonacoEditor
-          ref={monacoEditorRef}
-          value={jsonText}
-          language="json"
-          onChange={setJsonText}
-          onLinesContentChange={setLinesContent}
-        />
-      }
-      rightPanel={
-        <TreeCard tree={tree} onPositionChange={onPositionChange} />
-      }
+      language="json"
+      value={jsonText}
+      // leftPanel={
+      //   <MonacoEditor
+      //     ref={monacoEditorRef}
+      //     value={jsonText}
+      //     language="json"
+      //     onChange={setJsonText}
+      //     onLinesContentChange={setLinesContent}
+      //   />
+      // }
+      // rightPanel={
+      //   <TreeCard tree={tree} onPosition={onPositionChange} />
+      // }
     />
   )
 }

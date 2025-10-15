@@ -18,11 +18,11 @@ function App() {
 	return (
 		<SidebarProvider>
 			<Sidebar routes={routes} />
-			<main className="bg-gray-50 relative flex w-full h-[calc(100vh-100px)] overflow-hidden flex-1 flex-col">
-				<div className="h-8 flex items-center">
+			<main className="bg-gray-50 relative flex w-full h-[calc(100vh-var(--header-height))] overflow-hidden flex-1 flex-col">
+				<div style={{ "--header-height": "2rem" } as React.CSSProperties} className="h-[var(--header-height)] flex items-center shrink-0">
 					<SidebarTrigger />
 				</div>
-				<div className="w-auto h-full">
+				<div className="w-auto h-full m-2">
 					<Routes>
 						{[
 							...routes,
