@@ -6,8 +6,9 @@ export interface UseMonacoEditorOption {
 	language?: MonacoLanguage // ✅ 新增显式语言类型
 	readOnly?: boolean
 	theme?: "vs-dark" | "light"
+	onValueChange?:(value:string) => void
 }
-const useMonacoEditor = ({ value, language, readOnly, theme }: UseMonacoEditorOption) => {
+const useMonacoEditor = ({ value, language, readOnly, theme,onValueChange}: UseMonacoEditorOption) => {
 	const editorRef = useRef<HTMLDivElement | null>(null)
 	const monacoInstance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
 	const [contextPos, setContextPos] = useState<{ x: number; y: number } | null>(null)
@@ -36,6 +37,15 @@ const useMonacoEditor = ({ value, language, readOnly, theme }: UseMonacoEditorOp
 		})
 		const model = monacoInstance.current.getModel()
 		setLinesContent(model.getLinesContent())
+
+		// ✅ 内容变更监听
+		const changeListener = model?.onDidChangeContent(({ changes }) => {
+			const val = model.getValue()
+			const range = changes[0].range
+			setLinesContent(model.getLinesContent())
+			onValueChange?.(val)
+		})
+		// ✅ 标记变更监听
 		monaco.editor.onDidChangeMarkers(([uri]) => {
 			const markers = monaco.editor.getModelMarkers({ resource: uri })
 			if (!markers.length) {
@@ -51,12 +61,11 @@ const useMonacoEditor = ({ value, language, readOnly, theme }: UseMonacoEditorOp
 			}
 		})
 	}, [])
-
   return {
     editorRef,
     monacoInstance,
     linesContent,
-    monaco
+    monaco,
   }
 }
 

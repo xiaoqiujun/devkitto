@@ -2,7 +2,8 @@ import useMonacoEditor from "@/hooks/use-monaco-editor"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./ui/resizable"
 import { JsonTree, useJsonLineMap } from "@/hooks/use-json-line-map"
 import TreeCard from "./tree-card"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 
 export interface EditorHandle {
 	/**
@@ -194,37 +195,52 @@ export interface EditorHandle {
 	 */
 	onCursorChange?: (position: { lineNumber: number; column: number }) => void
 }
-export interface EditorProps {
+export interface EditorProps extends EditorHandle {
 	leftPanel?: React.ReactNode
 	rightPanel?: React.ReactNode
 	language?: "json" | "yaml" | "xml" | "csv" // ✅ 新增显式语言类型
 	value?: string
 }
 
-const Editor = ({ leftPanel, rightPanel, language, value }: EditorProps) => {
-	const { editorRef, monacoInstance, linesContent, monaco } = useMonacoEditor({ value, language })
+const Editor = ({ leftPanel, rightPanel, language, value, onContentChange }: EditorProps) => {
+	const virtualizerRef = useRef(null)
 
+	const { editorRef, monacoInstance, linesContent, monaco } = useMonacoEditor({
+		value,
+		language,
+		onValueChange: (val) => {
+			onContentChange?.(val)
+			console.log("onValueChange", linesContent)
+		},
+	})
 	const { nodes, tree } = useJsonLineMap(linesContent)
 
 	const [treeData, setTreeData] = useState(tree)
+
+	const rowVirtualizer = useVirtualizer({
+		count: nodes.length,
+		getScrollElement: () => virtualizerRef.current,
+		estimateSize: () => 56,
+	})
+	console.log(nodes,rowVirtualizer.getVirtualItems())
 
 	useEffect(() => {
 		setTreeData(tree)
 	}, [tree])
 
-	const onPosition = (lineNumber: number, column: number) => {
-		console.log("跳转", lineNumber, column)
+	const onPosition = (startLineNumber: number, startColumn: number, endLineNumber: number, endColumn: number) => {
+		console.log("跳转", startColumn, endColumn)		
 		const editor = monacoInstance.current
 		if (!editor) return
 		const model = editor.getModel()
 		if (!model) return
-		const lineLength = model.getLineLength(lineNumber)
-		const position = new monaco.Position(lineNumber, column)
+		const lineLength = model.getLineLength(endLineNumber)
+		const position = new monaco.Position(endLineNumber, endColumn)
 		const range = new monaco.Range(
-			lineNumber, // 起始行
-			1, // 起始列
-			lineNumber, // 结束行
-			lineLength + 1 // 结束列（+1 确保选中整行，包括换行符）
+			startLineNumber, // 起始行
+			startColumn, // 起始列
+			endLineNumber, // 结束行
+			endColumn + 1 // 结束列（+1 确保选中整行，包括换行符）	
 		)
 		editor.revealPosition(position)
 		editor.setPosition(position)
@@ -236,27 +252,28 @@ const Editor = ({ leftPanel, rightPanel, language, value }: EditorProps) => {
 
 	const onOpenChange = useCallback((item: JsonTree, open: boolean) => {
 		console.log("展开", item.id, open)
-		const toggle = (tree: JsonTree[], id: string, expanded: boolean) => {
-			let found = false
-			const result = tree.map((node) => {
-				if (found) return node
+		const toggle = (tree: JsonTree[], id: string, expanded: boolean): [JsonTree[], boolean] => {
+			let modified = false
+
+			const newTree = tree.map((node) => {
 				if (node.id === id) {
-					found = true
+					modified = true
 					return { ...node, expanded }
 				} else if (node.children && node.children.length) {
-					const newChildren = toggle(node.children, id, expanded)
-					if (newChildren !== node.children) found = true
-					return { ...node, children: newChildren }
-				} else {
-					return node
+					const [newChildren, changed] = toggle(node.children, id, expanded)
+					if (changed) {
+						modified = true
+						return { ...node, children: newChildren }
+					}
 				}
+				return node
 			})
-			return result
+
+			return [newTree, modified]
 		}
 		setTreeData((prev) => {
-			const newTree = [...prev]
-			const tree = toggle(newTree, item.id, open)
-			return tree
+			const [newTree] = toggle(prev, item.id, open)
+			return newTree
 		})
 	}, [])
 
@@ -270,7 +287,7 @@ const Editor = ({ leftPanel, rightPanel, language, value }: EditorProps) => {
 			<ResizableHandle withHandle />
 			<ResizablePanel defaultSize={50}>
 				<div className="relative h-full">
-					<div className="absolute inset-0 overflow-auto p-3">
+					<div className="absolute inset-0 overflow-auto p-3" ref={virtualizerRef}>
 						<TreeCard
 							tree={treeData}
 							onPosition={onPosition}

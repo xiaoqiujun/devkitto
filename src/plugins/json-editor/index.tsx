@@ -26,6 +26,7 @@ export const JSONEditor = () => {
     <Editor
       language="json"
       value={jsonText}
+      onContentChange={setJsonText}
       // leftPanel={
       //   <MonacoEditor
       //     ref={monacoEditorRef}

@@ -63,6 +63,7 @@ const MonacoEditor = forwardRef<MonacoEditorHandle,MonacoEditorProps>(({
 			theme,
 			automaticLayout: true,
 			minimap: { enabled: false },
+			tabSize: 2,
 			// contextmenu: false, // 关闭右键菜单
 			quickSuggestions: false, // 关闭自动建议弹窗
 			mouseWheelZoom: false, // 禁用 Ctrl+滚轮缩放

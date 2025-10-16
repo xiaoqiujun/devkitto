@@ -1,9 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { JsonTree } from "@/hooks/use-json-line-map"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "./ui/button"
 import { Plus } from "lucide-react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -50,7 +51,7 @@ const TreeValue = ({ valueType, value, children, expanded, className = "" }: Tre
 				<Input
 					name="treeValue"
 					placeholder="输入值"
-					className="max-w-full truncate whitespace-nowrap overflow-hidden text-ellipsis border-none shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-gray-400"
+					className="max-w-full  truncate whitespace-nowrap overflow-hidden text-ellipsis border-none shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-gray-400"
 					value={value}
 				/>
 			)
@@ -118,8 +119,8 @@ const TreeValue = ({ valueType, value, children, expanded, className = "" }: Tre
 }
 
 export interface TreeCardHandle {
-	onPosition?: (lineNumber: number, column: number) => void
-	onKeyFocus?: (item: JsonTree) => void
+	onPosition?: (startLineNumber: number, startColumn: number, endLineNumber: number, endColumn: number) => void
+	onKeyFocus?: (type:string, item: JsonTree) => void
 	onOpenChange?: (item: JsonTree, open: boolean) => void
 	onValueChange?: (value: any) => void
 }
@@ -130,7 +131,7 @@ export interface TreeCardProps extends TreeCardHandle {
 const TreeCard = ({ tree, onPosition, onOpenChange, onValueChange }: TreeCardProps) => {
 	
 	return (
-		<div className="tree relative flex flex-col w-full bg-gray-50 rounded-xs gap-3">
+		<div className="tree relative flex flex-col w-full bg-gray-50 rounded-md gap-3">
 			{tree.map((child) => {
 				return (
 					<TreeCardItem
@@ -151,25 +152,32 @@ export interface TreeCardItemProps extends JsonTree, TreeCardHandle {
 }
 const TreeCardItem = ({ onPosition, onOpenChange, className = "", ...item }: TreeCardItemProps) => {
 	const [open, setOpen] = useState(false)
-	const onKeyFocus = (item: JsonTree) => {
-		onPosition?.(item.startLine, 1)
+	const virtualizerRef = useRef(null)
+
+	const onKeyFocus = (type:string,item: JsonTree) => {
+		console.log(type,item)
+		const {range, block} = item
+		if(type === 'key') {
+			// onPosition?.(range.key.startLineNumber, range.key.startColumn, range.key.endLineNumber, range.key.endColumn)
+			onPosition?.(block.startLineNumber, block.startColumn, block.endLineNumber, block.endColumn)
+		} else if(type === 'value') {
+			// onPosition?.(item.startLineNumber[1], item.startColumn[1], item.endLineNumber[1], item.endColumn[1])
+		}
 	}
 
-	if (!item.children.length) {
-		return <TreeHeader {...item} onKeyFocus={onKeyFocus} />
-	}
+	// console.log(rowVirtualizer.getVirtualItems())
+
 	return (
-		<div className={cn("tree relative flex w-full bg-slate-200/50 rounded-md", className)} key={item.id}>
+		<div className={cn("tree-item relative flex w-full bg-slate-200/50 rounded-md", className)} key={item.id}>
 			{/* {tree.level > 0 ? <div className="absolute top-0 left-3 h-full w-[1px] bg-slate-400"></div> : null} */}
-			<Collapsible open={item.expanded} onOpenChange={() => onOpenChange?.(item, !item.expanded)} className={cn("w-full px-3 pb-2.5")}>
+			<Collapsible open={item.expanded} onOpenChange={() => onOpenChange?.(item, !item.expanded)} className={cn("w-full  px-3 py-2.5")}>
 				<TreeHeader {...item} onKeyFocus={onKeyFocus} onOpenChange={onOpenChange} />
-				<CollapsibleContent className="py-2.5 px-3 rounded-md collapsible-content overflow-hidden flex flex-col items-start gap-3 bg-gray-50">
-					{/* <div className="overflow-auto max-h-[calc(100vh-120px)]">
-						
-					</div> */}
-					{item.children?.map((child) => {
+				<CollapsibleContent className="collapsible-content overflow-hidden">
+					<div className="tree relative flex flex-col w-full bg-gray-50 rounded-md gap-3  px-3 py-2.5 mt-3" ref={virtualizerRef}>
+						{item.children?.map((child) => {
 						return <TreeCardItem {...child} key={child.id} onPosition={onPosition} onOpenChange={onOpenChange} />
 					})}
+					</div>
 				</CollapsibleContent>
 			</Collapsible>
 		</div>
@@ -191,8 +199,8 @@ const TreeHeader = ({ onPosition, onKeyFocus, onOpenChange, ...item }: TreeHeade
 	return (
 		<div
 			className={cn(
-				"flex items-center justify-start w-full max-w-full py-2.5 rounded-md",
-				!item.children.length ? "px-3 bg-slate-200/50" : "pb-0"
+				"flex items-center justify-start",
+				// !item.children.length ? "px-3 bg-slate-200/50" : "pb-0"
 			)}
 		>
 			<div className="trigger flex items-center justify-center">
@@ -206,7 +214,7 @@ const TreeHeader = ({ onPosition, onKeyFocus, onOpenChange, ...item }: TreeHeade
 				<DropdownMenu modal={false}>
 					<DropdownMenuTrigger asChild>
 						<div className="cursor-pointer">
-							<ValueTypeIcon valueType={item.valueType as ValueType} />
+							<ValueTypeIcon valueType={item.valueType as ValueType} size={18} />
 						</div>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start">
@@ -227,17 +235,17 @@ const TreeHeader = ({ onPosition, onKeyFocus, onOpenChange, ...item }: TreeHeade
 						placeholder="输入key name"
 						className="min-w-32 max-w-32 truncate whitespace-nowrap overflow-hidden text-ellipsis border-none shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
 						value={item.name}
-						onFocus={() => onKeyFocus(item)}
+						onFocus={() => onKeyFocus('key',item)}
 					/>
-					<TreeValue className="inline-block min-w-2xs max-w-full" {...item} />
+					<TreeValue className="inline-block" {...item} />
 				</div>
-				{["object", "array"].includes(item.valueType) ? (
+				{/* {["object", "array"].includes(item.valueType) ? (
 					<div className="action">
 						<Button variant="ghost" className="px-2.5">
 							<Plus />
 						</Button>
 					</div>
-				) : null}
+				) : null} */}
 			</div>
 		</div>
 	)
