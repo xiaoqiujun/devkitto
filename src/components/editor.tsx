@@ -1,9 +1,9 @@
 import useMonacoEditor from "@/hooks/use-monaco-editor"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./ui/resizable"
-import { JsonTree, useJsonLineMap } from "@/hooks/use-json-line-map"
 import TreeCard from "./tree-card"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
+import { JsonTree, transformJsonLineMap } from "@/plugins/json-editor/transform"
 
 export interface EditorHandle {
 	/**
@@ -210,10 +210,12 @@ const Editor = ({ leftPanel, rightPanel, language, value, onContentChange }: Edi
 		language,
 		onValueChange: (val) => {
 			onContentChange?.(val)
-			console.log("onValueChange", linesContent)
 		},
 	})
-	const { nodes, tree } = useJsonLineMap(linesContent)
+
+	const {nodes, tree} = useMemo(() => {
+		return transformJsonLineMap(linesContent)
+	}, [linesContent])
 
 	const [treeData, setTreeData] = useState(tree)
 
@@ -222,7 +224,7 @@ const Editor = ({ leftPanel, rightPanel, language, value, onContentChange }: Edi
 		getScrollElement: () => virtualizerRef.current,
 		estimateSize: () => 56,
 	})
-	console.log(nodes,rowVirtualizer.getVirtualItems())
+	console.log(nodes,tree,rowVirtualizer.getVirtualItems())
 
 	useEffect(() => {
 		setTreeData(tree)
@@ -245,7 +247,7 @@ const Editor = ({ leftPanel, rightPanel, language, value, onContentChange }: Edi
 		editor.revealPosition(position)
 		editor.setPosition(position)
 		editor.setSelection(range)
-		editor.focus()
+		// editor.focus()
 	}
 
 	const onValueChange = (value?: any) => {}
@@ -277,6 +279,10 @@ const Editor = ({ leftPanel, rightPanel, language, value, onContentChange }: Edi
 		})
 	}, [])
 
+	const onTreeInputChange = useCallback((type: string, e: React.ChangeEvent<HTMLInputElement | HTMLButtonElement>, item: JsonTree) => {
+		console.log(type, e, item)
+	}, [])
+
 	return (
 		<ResizablePanelGroup direction="horizontal" className="min-w-full w-full rounded-lg border">
 			<ResizablePanel defaultSize={20} minSize={1}>
@@ -293,6 +299,7 @@ const Editor = ({ leftPanel, rightPanel, language, value, onContentChange }: Edi
 							onPosition={onPosition}
 							onValueChange={onValueChange}
 							onOpenChange={onOpenChange}
+							onTreeInputChange={onTreeInputChange}
 						/>
 					</div>
 				</div>

@@ -9,24 +9,14 @@ import TreeCard from "@/components/tree-card"
 
 
 export const JSONEditor = () => {
-  const monacoEditorRef = useRef<MonacoEditorHandle>(null)
-
   const [jsonText, setJsonText] = useState(JSON.stringify(jsonData, null, 2))
-  const [linesContent, setLinesContent] = useState<string[]>([])
-  
-  const { nodes, tree } = useJsonLineMap(linesContent)
-  console.log(linesContent,nodes, tree)
-  const onPositionChange = (lineNumber: number, column: number) => {
-    console.log("跳转",lineNumber, column)
-    if (monacoEditorRef.current) {
-      monacoEditorRef.current.positionAt(lineNumber, column)
-    }
-  }
   return (
     <Editor
       language="json"
       value={jsonText}
-      onContentChange={setJsonText}
+      onContentChange={(val) => {
+        setJsonText(JSON.stringify(JSON.parse(val), null, 2))
+      }}
       // leftPanel={
       //   <MonacoEditor
       //     ref={monacoEditorRef}

@@ -18,6 +18,7 @@ import {
 import ValueTypeIcon, { ValueType, ValueTypeMap } from "./value-type-icon"
 import { cn } from "@/lib/utils"
 import { Input } from "./ui/input"
+import { Checkbox } from "./ui/checkbox"
 
 const TreeArrow = ({ size = 16, className = "" }: { size?: number; className?: string }) => {
 	return (
@@ -43,8 +44,23 @@ const TreeArrow = ({ size = 16, className = "" }: { size?: number; className?: s
 }
 interface TreeValueProps extends JsonTree {
 	className?: string
+	onTreeInputChange?: (
+		type: string,
+		e: React.ChangeEvent<HTMLInputElement | HTMLButtonElement>,
+		item: JsonTree
+	) => void
+	onFocus?: (type: string, item: JsonTree) => void
 }
-const TreeValue = ({ valueType, value, children, expanded, className = "" }: TreeValueProps) => {
+const TreeValue = ({
+	valueType,
+	value,
+	children,
+	expanded,
+	className = "",
+	onTreeInputChange,
+	onFocus,
+	...rest
+}: TreeValueProps) => {
 	switch (valueType) {
 		case "string":
 			return (
@@ -52,7 +68,9 @@ const TreeValue = ({ valueType, value, children, expanded, className = "" }: Tre
 					name="treeValue"
 					placeholder="输入值"
 					className="max-w-full  truncate whitespace-nowrap overflow-hidden text-ellipsis border-none shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-gray-400"
-					value={value}
+					value={value as string}
+					onFocus={() => onFocus?.("value", { ...rest, expanded })}
+					onChange={(e) => onTreeInputChange?.("value", e, { ...rest, expanded })}
 				/>
 			)
 		case "number":
@@ -61,7 +79,9 @@ const TreeValue = ({ valueType, value, children, expanded, className = "" }: Tre
 					name="treeValue"
 					placeholder="输入值"
 					className="max-w-full truncate whitespace-nowrap overflow-hidden text-ellipsis border-none shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-gray-400"
-					value={value}
+					value={value as string}
+					onFocus={() => onFocus?.("value", { ...rest, expanded })}
+					onChange={(e) => onTreeInputChange?.("value", e, { ...rest, expanded })}
 				/>
 			)
 		case "boolean":
@@ -72,7 +92,17 @@ const TreeValue = ({ valueType, value, children, expanded, className = "" }: Tre
 						className
 					)}
 				>
-					{value ? "true" : "false"}
+					<Checkbox
+						checked={value as boolean}
+						value={value as string}
+						className="align-middle"
+						onChange={(e) =>
+							onTreeInputChange?.("value", e as React.ChangeEvent<HTMLButtonElement>, {
+								...rest,
+								expanded,
+							})
+						}
+					/>
 				</span>
 			)
 		case "array":
@@ -120,18 +150,27 @@ const TreeValue = ({ valueType, value, children, expanded, className = "" }: Tre
 
 export interface TreeCardHandle {
 	onPosition?: (startLineNumber: number, startColumn: number, endLineNumber: number, endColumn: number) => void
-	onKeyFocus?: (type:string, item: JsonTree) => void
+	onFocus?: (type: string, item: JsonTree) => void
 	onOpenChange?: (item: JsonTree, open: boolean) => void
 	onValueChange?: (value: any) => void
+	onTreeInputChange?: (type: string, e: React.ChangeEvent<HTMLInputElement>, item: JsonTree) => void
 }
 
 export interface TreeCardProps extends TreeCardHandle {
 	tree: JsonTree[]
 }
-const TreeCard = ({ tree, onPosition, onOpenChange, onValueChange }: TreeCardProps) => {
-	
+const TreeCard = ({ tree, onPosition, onOpenChange, onValueChange, onTreeInputChange }: TreeCardProps) => {
+	const [focused, setFocused] = useState(false)
+	const onBlur = () => {
+		setFocused(false)
+		console.log(22)
+	}
+	const onFocus = () => {
+		console.log(111)
+		setFocused(true)
+	}
 	return (
-		<div className="tree relative flex flex-col w-full bg-gray-50 rounded-md gap-3">
+		<div className="tree relative flex flex-col w-full bg-gray-50 rounded-md gap-3" onBlur={onBlur} onFocus={onFocus}>
 			{tree.map((child) => {
 				return (
 					<TreeCardItem
@@ -140,6 +179,7 @@ const TreeCard = ({ tree, onPosition, onOpenChange, onValueChange }: TreeCardPro
 						onPosition={onPosition}
 						onOpenChange={onOpenChange}
 						onValueChange={onValueChange}
+						onTreeInputChange={onTreeInputChange}
 					/>
 				)
 			})}
@@ -150,34 +190,52 @@ const TreeCard = ({ tree, onPosition, onOpenChange, onValueChange }: TreeCardPro
 export interface TreeCardItemProps extends JsonTree, TreeCardHandle {
 	className?: string
 }
-const TreeCardItem = ({ onPosition, onOpenChange, className = "", ...item }: TreeCardItemProps) => {
+const TreeCardItem = ({ onPosition, onOpenChange, onTreeInputChange, className = "", ...item }: TreeCardItemProps) => {
 	const [open, setOpen] = useState(false)
 	const virtualizerRef = useRef(null)
 
-	const onKeyFocus = (type:string,item: JsonTree) => {
-		console.log(type,item)
-		const {range, block} = item
-		if(type === 'key') {
-			// onPosition?.(range.key.startLineNumber, range.key.startColumn, range.key.endLineNumber, range.key.endColumn)
+	const onFocus = (type: string, item: JsonTree) => {
+		const { range, block } = item
+		if (type === "key") {
 			onPosition?.(block.startLineNumber, block.startColumn, block.endLineNumber, block.endColumn)
-		} else if(type === 'value') {
-			// onPosition?.(item.startLineNumber[1], item.startColumn[1], item.endLineNumber[1], item.endColumn[1])
+		} else if (type === "value") {
+			onPosition?.(range.value.startLineNumber, range.value.startColumn, range.value.endLineNumber, range.value.endColumn)
 		}
 	}
-
-	// console.log(rowVirtualizer.getVirtualItems())
 
 	return (
 		<div className={cn("tree-item relative flex w-full bg-slate-200/50 rounded-md", className)} key={item.id}>
 			{/* {tree.level > 0 ? <div className="absolute top-0 left-3 h-full w-[1px] bg-slate-400"></div> : null} */}
-			<Collapsible open={item.expanded} onOpenChange={() => onOpenChange?.(item, !item.expanded)} className={cn("w-full  px-3 py-2.5")}>
-				<TreeHeader {...item} onKeyFocus={onKeyFocus} onOpenChange={onOpenChange} />
+			<Collapsible
+				open={item.expanded}
+				onOpenChange={() => onOpenChange?.(item, !item.expanded)}
+				className={cn("w-full  px-3 py-2.5")}
+			>
+				<TreeHeader
+					{...item}
+					onFocus={onFocus}
+					onOpenChange={onOpenChange}
+					onTreeInputChange={onTreeInputChange}
+				/>
 				<CollapsibleContent className="collapsible-content overflow-hidden">
-					<div className="tree relative flex flex-col w-full bg-gray-50 rounded-md gap-3  px-3 py-2.5 mt-3" ref={virtualizerRef}>
-						{item.children?.map((child) => {
-						return <TreeCardItem {...child} key={child.id} onPosition={onPosition} onOpenChange={onOpenChange} />
-					})}
-					</div>
+					{(item.children || []).length ? (
+						<div
+							className="tree relative flex flex-col w-full bg-gray-50 rounded-md gap-3  px-3 py-2.5 mt-3"
+							ref={virtualizerRef}
+						>
+							{item.children?.map((child) => {
+								return (
+									<TreeCardItem
+										{...child}
+										key={child.id}
+										onPosition={onPosition}
+										onOpenChange={onOpenChange}
+										onTreeInputChange={onTreeInputChange}
+									/>
+								)
+							})}
+						</div>
+					) : null}
 				</CollapsibleContent>
 			</Collapsible>
 		</div>
@@ -189,7 +247,7 @@ interface TreeHeaderProps extends JsonTree, TreeCardHandle {}
  * @param param0
  * @returns
  */
-const TreeHeader = ({ onPosition, onKeyFocus, onOpenChange, ...item }: TreeHeaderProps) => {
+const TreeHeader = ({ onPosition, onFocus, onOpenChange, onTreeInputChange, ...item }: TreeHeaderProps) => {
 	const valueTypeMap = ValueTypeMap.map(([value, label]) => {
 		return {
 			value: value,
@@ -197,12 +255,7 @@ const TreeHeader = ({ onPosition, onKeyFocus, onOpenChange, ...item }: TreeHeade
 		}
 	})
 	return (
-		<div
-			className={cn(
-				"flex items-center justify-start",
-				// !item.children.length ? "px-3 bg-slate-200/50" : "pb-0"
-			)}
-		>
+		<div className={cn("flex items-center justify-start")}>
 			<div className="trigger flex items-center justify-center">
 				{item.children?.length > 0 ? (
 					<CollapsibleTrigger asChild>
@@ -235,9 +288,10 @@ const TreeHeader = ({ onPosition, onKeyFocus, onOpenChange, ...item }: TreeHeade
 						placeholder="输入key name"
 						className="min-w-32 max-w-32 truncate whitespace-nowrap overflow-hidden text-ellipsis border-none shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
 						value={item.name}
-						onFocus={() => onKeyFocus('key',item)}
+						onFocus={() => onFocus("key", item)}
+						onChange={(e) => onTreeInputChange("key", e, item)}
 					/>
-					<TreeValue className="inline-block" {...item} />
+					<TreeValue className="inline-block" {...item} onFocus={onFocus}  onTreeInputChange={onTreeInputChange} />
 				</div>
 				{/* {["object", "array"].includes(item.valueType) ? (
 					<div className="action">
